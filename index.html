@@ -1,0 +1,182 @@
+from flask import Flask, request
+
+import random
+
+app = Flask(__name__)
+
+used_numbers = set()
+current_min = None
+current_max = None
+
+
+@app.route("/", methods=["GET", "POST"])
+def home():
+    global used_numbers, current_min, current_max
+
+    number = None
+    message = ""
+
+    # GET bo'lsa, oldingi qiymatlarni ko'rsatamiz
+    min_number = current_min if current_min is not None else ""
+    max_number = current_max if current_max is not None else ""
+
+    if request.method == "POST":
+
+        # RESET tugmasi bosilsa
+        if request.form.get("action") == "reset":
+            used_numbers = set()
+            current_min = None
+            current_max = None
+
+            min_number = ""
+            max_number = ""
+
+        else:
+            min_number = int(request.form["min_number"])
+            max_number = int(request.form["max_number"])
+
+            # Minimum maximumdan katta bo'lmasligi kerak
+            if min_number > max_number:
+                message = "❌ Minimum Maximumdan katta bo'lishi mumkin emas!"
+
+            else:
+                # Yangi diapazon bo'lsa, eski sonlarni tozalaymiz
+                if min_number != current_min or max_number != current_max:
+                    used_numbers = set()
+                    current_min = min_number
+                    current_max = max_number
+
+                all_numbers = set(range(min_number, max_number + 1))
+                available_numbers = all_numbers - used_numbers
+
+                if not available_numbers:
+                    message = "🎉 Barcha sonlar ishlatildi!"
+                else:
+                    number = random.choice(list(available_numbers))
+                    used_numbers.add(number)
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Random Number Generator</title>
+
+        <style>
+            body {{
+                font-family: Arial, sans-serif;
+                background: #f0f2f5;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                margin: 0;
+            }}
+
+            .box {{
+                background: white;
+                padding: 40px;
+                border-radius: 20px;
+                width: 350px;
+                text-align: center;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            }}
+
+            h1 {{
+                margin-bottom: 25px;
+            }}
+
+            input {{
+                width: 90%;
+                padding: 12px;
+                margin: 8px;
+                border: 1px solid #ccc;
+                border-radius: 10px;
+                font-size: 16px;
+                box-sizing: border-box;
+            }}
+
+            button {{
+                width: 95%;
+                padding: 13px;
+                margin-top: 15px;
+                background: #007bff;
+                color: white;
+                border: none;
+                border-radius: 10px;
+                font-size: 17px;
+                cursor: pointer;
+            }}
+
+            button:hover {{
+                background: #0056b3;
+            }}
+
+            .reset {{
+                background: #6c757d;
+            }}
+
+            .reset:hover {{
+                background: #545b62;
+            }}
+
+            .number {{
+                font-size: 55px;
+                font-weight: bold;
+                margin: 25px;
+            }}
+
+            .message {{
+                font-size: 18px;
+                color: #555;
+            }}
+        </style>
+    </head>
+
+    <body>
+
+        <div class="box">
+
+            <h1>🎲 Random Number</h1>
+
+            <form method="POST">
+
+                <input
+                    type="number"
+                    name="min_number"
+                    placeholder="Minimum"
+                    value="{min_number}"
+                    required
+                >
+
+                <input
+                    type="number"
+                    name="max_number"
+                    placeholder="Maximum"
+                    value="{max_number}"
+                    required
+                >
+
+                <button type="submit" name="action" value="generate">
+                    🎲 GENERATE
+                </button>
+
+                <button type="submit" name="action" value="reset" class="reset">
+                    🔄 RESET
+                </button>
+
+            </form>
+
+            {"<div class='number'>" + str(number) + "</div>" if number is not None else ""}
+
+            {"<div class='message'>" + message + "</div>" if message else ""}
+
+        </div>
+
+    </body>
+    </html>
+    """
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
