@@ -1,21 +1,16 @@
-from flask import Flask, render_template_string, request
-import random
-
-app = Flask(__name__)
-
-HTML = """
 <!DOCTYPE html>
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Random Generator</title>
 
     <style>
         * {
-            box-sizing: border-box;
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
         }
 
         body {
@@ -23,39 +18,70 @@ HTML = """
             display: flex;
             justify-content: center;
             align-items: center;
+
             font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #141e30, #243b55);
+
+            background:
+                radial-gradient(circle at top left, #6c63ff, transparent 35%),
+                radial-gradient(circle at bottom right, #00c6ff, transparent 35%),
+                #0f172a;
+
             color: white;
+            overflow: hidden;
         }
 
         .container {
             width: 90%;
             max-width: 450px;
             padding: 35px;
+
+            background: rgba(255, 255, 255, 0.10);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+
+            backdrop-filter: blur(20px);
+
             border-radius: 25px;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(15px);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+
+            box-shadow:
+                0 25px 60px rgba(0, 0, 0, 0.4);
+
             text-align: center;
+        }
+
+        .icon {
+            font-size: 55px;
+            margin-bottom: 10px;
+
+            animation: rotate 3s infinite linear;
+        }
+
+        @keyframes rotate {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         h1 {
             font-size: 32px;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
-        .subtitle {
-            color: #cfd8e3;
+        .description {
+            color: #cbd5e1;
             margin-bottom: 30px;
         }
 
         .inputs {
             display: flex;
             gap: 15px;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
 
-        .input-box {
+        .input-group {
             flex: 1;
             text-align: left;
         }
@@ -63,71 +89,144 @@ HTML = """
         label {
             display: block;
             margin-bottom: 8px;
-            color: #dce6f2;
+            color: #e2e8f0;
+            font-size: 14px;
         }
 
         input {
             width: 100%;
             padding: 14px;
+
             border: none;
             outline: none;
+
             border-radius: 12px;
+
             font-size: 16px;
-            background: rgba(255, 255, 255, 0.9);
+
+            background: rgba(255, 255, 255, 0.95);
+            color: #111827;
+        }
+
+        input:focus {
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.5);
         }
 
         button {
             width: 100%;
             padding: 15px;
+
             border: none;
             border-radius: 12px;
+
+            background: linear-gradient(
+                135deg,
+                #6366f1,
+                #8b5cf6
+            );
+
+            color: white;
+
             font-size: 18px;
             font-weight: bold;
+
             cursor: pointer;
-            color: white;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            transition: 0.3s;
+
+            transition: 0.25s;
         }
 
         button:hover {
             transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(118, 75, 162, 0.5);
+
+            box-shadow:
+                0 10px 30px rgba(99, 102, 241, 0.4);
+        }
+
+        button:active {
+            transform: scale(0.97);
         }
 
         .result {
-            margin-top: 30px;
+            margin-top: 25px;
             padding: 25px;
+
             border-radius: 18px;
-            background: rgba(0, 0, 0, 0.2);
+
+            background: rgba(0, 0, 0, 0.20);
+
+            display: none;
         }
 
-        .result-title {
-            color: #cfd8e3;
+        .result.show {
+            display: block;
+
+            animation: appear 0.4s ease;
+        }
+
+        @keyframes appear {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .result-text {
+            color: #cbd5e1;
+            font-size: 14px;
             margin-bottom: 10px;
         }
 
-        .number {
-            font-size: 55px;
+        #number {
+            font-size: 60px;
             font-weight: bold;
-            color: #ffffff;
+
+            background: linear-gradient(
+                90deg,
+                #60a5fa,
+                #c084fc
+            );
+
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         .error {
-            margin-top: 20px;
-            color: #ff8a8a;
+            color: #fca5a5;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .footer {
+            margin-top: 25px;
+            font-size: 12px;
+            color: #94a3b8;
         }
 
         @media (max-width: 500px) {
-            .inputs {
-                flex-direction: column;
-            }
 
             .container {
                 padding: 25px;
             }
 
+            .inputs {
+                flex-direction: column;
+            }
+
             h1 {
                 font-size: 27px;
+            }
+
+            #number {
+                font-size: 50px;
             }
         }
     </style>
@@ -135,95 +234,126 @@ HTML = """
 
 <body>
 
-<div class="container">
+    <div class="container">
 
-    <h1>🎲 Random Generator</h1>
-    <p class="subtitle">Tasodifiy son generatsiya qiling</p>
+        <div class="icon">🎲</div>
 
-    <form method="POST">
+        <h1>Random Generator</h1>
+
+        <p class="description">
+            Istalgan oraliqdan tasodifiy son tanlang
+        </p>
 
         <div class="inputs">
 
-            <div class="input-box">
+            <div class="input-group">
                 <label>Minimum</label>
+
                 <input
                     type="number"
-                    name="min_number"
-                    placeholder="Masalan: 1"
-                    required
-                    value="{{ min_number }}"
+                    id="min"
+                    placeholder="1"
                 >
             </div>
 
-            <div class="input-box">
+            <div class="input-group">
                 <label>Maximum</label>
+
                 <input
                     type="number"
-                    name="max_number"
-                    placeholder="Masalan: 100"
-                    required
-                    value="{{ max_number }}"
+                    id="max"
+                    placeholder="100"
                 >
             </div>
 
         </div>
 
-        <button type="submit">
+        <button onclick="generateRandom()">
             🎲 Generate
         </button>
 
-    </form>
+        <div class="error" id="error">
+            ❌ Minimum maksimumdan katta bo'lishi mumkin emas!
+        </div>
 
-    {% if number is not none %}
-    <div class="result">
-        <div class="result-title">Sizning random soningiz:</div>
-        <div class="number">{{ number }}</div>
+        <div class="result" id="result">
+
+            <div class="result-text">
+                Sizning random soningiz:
+            </div>
+
+            <div id="number">
+                0
+            </div>
+
+        </div>
+
+        <div class="footer">
+            ✨ Simple Random Number Generator
+        </div>
+
     </div>
-    {% endif %}
 
-    {% if error %}
-    <div class="error">
-        ❌ {{ error }}
-    </div>
-    {% endif %}
 
-</div>
+    <script>
+
+        function generateRandom() {
+
+            const minInput = document.getElementById("min");
+            const maxInput = document.getElementById("max");
+
+            const result = document.getElementById("result");
+            const number = document.getElementById("number");
+            const error = document.getElementById("error");
+
+            const min = Number(minInput.value);
+            const max = Number(maxInput.value);
+
+            // Xatoni yashirish
+            error.classList.remove("show");
+
+            // Sonlar kiritilganini tekshirish
+            if (
+                minInput.value === "" ||
+                maxInput.value === ""
+            ) {
+                error.textContent =
+                    "❌ Iltimos, minimum va maksimumni kiriting!";
+
+                error.classList.add("show");
+
+                return;
+            }
+
+            // Minimum maksimumdan katta bo'lsa
+            if (min > max) {
+
+                error.textContent =
+                    "❌ Minimum maksimumdan katta bo'lishi mumkin emas!";
+
+                error.classList.add("show");
+
+                return;
+            }
+
+            // Random son
+            const randomNumber =
+                Math.floor(
+                    Math.random() * (max - min + 1)
+                ) + min;
+
+            // Natijani chiqarish
+            number.textContent = randomNumber;
+
+            result.classList.remove("show");
+
+            // Animatsiyani qayta ishga tushirish
+            setTimeout(() => {
+                result.classList.add("show");
+            }, 10);
+        }
+
+    </script>
 
 </body>
 </html>
-"""
-
-
-@app.route("/", methods=["GET", "POST"])
-def home():
-
-    number = None
-    error = ""
-    min_number = ""
-    max_number = ""
-
-    if request.method == "POST":
-
-        try:
-            min_number = int(request.form["min_number"])
-            max_number = int(request.form["max_number"])
-
-            if min_number > max_number:
-                error = "Minimum son Maximum sondan katta bo'lishi mumkin emas!"
-            else:
-                number = random.randint(min_number, max_number)
-
-        except ValueError:
-            error = "Iltimos, faqat son kiriting!"
-
-    return render_template_string(
-        HTML,
-        number=number,
-        error=error,
-        min_number=min_number,
-        max_number=max_number
-    )
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
