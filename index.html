@@ -1,457 +1,228 @@
-from flask import Flask, request
+from flask import Flask, render_template_string, request
 import random
 
 app = Flask(__name__)
 
-used_numbers = set()
-current_min = None
-current_max = None
+HTML = """
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Generator</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #141e30, #243b55);
+            color: white;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 450px;
+            padding: 35px;
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #cfd8e3;
+            margin-bottom: 30px;
+        }
+
+        .inputs {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .input-box {
+            flex: 1;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #dce6f2;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            outline: none;
+            border-radius: 12px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            color: white;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            transition: 0.3s;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(118, 75, 162, 0.5);
+        }
+
+        .result {
+            margin-top: 30px;
+            padding: 25px;
+            border-radius: 18px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .result-title {
+            color: #cfd8e3;
+            margin-bottom: 10px;
+        }
+
+        .number {
+            font-size: 55px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+
+        .error {
+            margin-top: 20px;
+            color: #ff8a8a;
+        }
+
+        @media (max-width: 500px) {
+            .inputs {
+                flex-direction: column;
+            }
+
+            .container {
+                padding: 25px;
+            }
+
+            h1 {
+                font-size: 27px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>🎲 Random Generator</h1>
+    <p class="subtitle">Tasodifiy son generatsiya qiling</p>
+
+    <form method="POST">
+
+        <div class="inputs">
+
+            <div class="input-box">
+                <label>Minimum</label>
+                <input
+                    type="number"
+                    name="min_number"
+                    placeholder="Masalan: 1"
+                    required
+                    value="{{ min_number }}"
+                >
+            </div>
+
+            <div class="input-box">
+                <label>Maximum</label>
+                <input
+                    type="number"
+                    name="max_number"
+                    placeholder="Masalan: 100"
+                    required
+                    value="{{ max_number }}"
+                >
+            </div>
+
+        </div>
+
+        <button type="submit">
+            🎲 Generate
+        </button>
+
+    </form>
+
+    {% if number is not none %}
+    <div class="result">
+        <div class="result-title">Sizning random soningiz:</div>
+        <div class="number">{{ number }}</div>
+    </div>
+    {% endif %}
+
+    {% if error %}
+    <div class="error">
+        ❌ {{ error }}
+    </div>
+    {% endif %}
+
+</div>
+
+</body>
+</html>
+"""
 
 
 @app.route("/", methods=["GET", "POST"])
 def home():
-    global used_numbers, current_min, current_max
 
     number = None
-    message = ""
-
-    min_number = current_min if current_min is not None else ""
-    max_number = current_max if current_max is not None else ""
+    error = ""
+    min_number = ""
+    max_number = ""
 
     if request.method == "POST":
 
-        # RESET
-        if request.form.get("action") == "reset":
-            used_numbers = set()
-            current_min = None
-            current_max = None
-
-            min_number = ""
-            max_number = ""
-
-        else:
-            try:
-                min_number = int(request.form["min_number"])
-                max_number = int(request.form["max_number"])
-
-                if min_number > max_number:
-                    message = "❌ Minimum maximumdan katta bo‘lishi mumkin emas!"
-
-                else:
-                    # Yangi diapazon bo‘lsa, eski sonlarni tozalaymiz
-                    if min_number != current_min or max_number != current_max:
-                        used_numbers = set()
-                        current_min = min_number
-                        current_max = max_number
-
-                    all_numbers = set(range(min_number, max_number + 1))
-                    available_numbers = all_numbers - used_numbers
-
-                    if not available_numbers:
-                        message = "🎉 Barcha sonlar ishlatildi!"
-                    else:
-                        number = random.choice(list(available_numbers))
-                        used_numbers.add(number)
-
-            except ValueError:
-                message = "❌ Iltimos, to‘g‘ri son kiriting!"
-
-    return f"""
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-
-    <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
-    <title>Random Number Generator</title>
-
-    <style>
-
-        * {{
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }}
-
-        body {{
-            min-height: 100vh;
-
-            display: flex;
-            justify-content: center;
-            align-items: center;
-
-            font-family: Arial, sans-serif;
-
-            background:
-                radial-gradient(circle at top left,
-                #4f46e5,
-                transparent 35%),
-
-                radial-gradient(circle at bottom right,
-                #9333ea,
-                transparent 35%),
-
-                #0f172a;
-
-            color: white;
-
-            padding: 20px;
-        }}
-
-
-        .container {{
-            width: 100%;
-            max-width: 430px;
-
-            background: rgba(255, 255, 255, 0.10);
-
-            backdrop-filter: blur(20px);
-
-            border: 1px solid rgba(255, 255, 255, 0.18);
-
-            border-radius: 28px;
-
-            padding: 35px;
-
-            text-align: center;
-
-            box-shadow:
-                0 25px 60px rgba(0, 0, 0, 0.35);
-        }}
-
-
-        .icon {{
-            font-size: 55px;
-
-            margin-bottom: 10px;
-        }}
-
-
-        h1 {{
-            font-size: 32px;
-
-            margin-bottom: 8px;
-        }}
-
-
-        .subtitle {{
-            color: #cbd5e1;
-
-            font-size: 15px;
-
-            margin-bottom: 30px;
-        }}
-
-
-        .inputs {{
-            display: flex;
-
-            gap: 12px;
-
-            margin-bottom: 18px;
-        }}
-
-
-        input {{
-            width: 50%;
-
-            padding: 15px;
-
-            border: 1px solid rgba(255,255,255,0.2);
-
-            border-radius: 14px;
-
-            outline: none;
-
-            background: rgba(255,255,255,0.1);
-
-            color: white;
-
-            font-size: 16px;
-
-            transition: 0.3s;
-        }}
-
-
-        input::placeholder {{
-            color: #cbd5e1;
-        }}
-
-
-        input:focus {{
-            border-color: #818cf8;
-
-            background: rgba(255,255,255,0.15);
-
-            box-shadow: 0 0 0 3px rgba(129,140,248,0.2);
-        }}
-
-
-        button {{
-            width: 100%;
-
-            padding: 15px;
-
-            border: none;
-
-            border-radius: 14px;
-
-            font-size: 17px;
-
-            font-weight: bold;
-
-            cursor: pointer;
-
-            color: white;
-
-            transition: 0.25s;
-
-            margin-top: 10px;
-        }}
-
-
-        .generate {{
-            background: linear-gradient(
-                135deg,
-                #6366f1,
-                #8b5cf6
-            );
-
-            box-shadow:
-                0 8px 25px rgba(99,102,241,0.35);
-        }}
-
-
-        .generate:hover {{
-            transform: translateY(-2px);
-
-            box-shadow:
-                0 12px 30px rgba(99,102,241,0.5);
-        }}
-
-
-        .reset {{
-            background: rgba(255,255,255,0.10);
-
-            border: 1px solid rgba(255,255,255,0.15);
-        }}
-
-
-        .reset:hover {{
-            background: rgba(255,255,255,0.18);
-
-            transform: translateY(-2px);
-        }}
-
-
-        .result {{
-            margin-top: 30px;
-
-            padding: 25px;
-
-            border-radius: 20px;
-
-            background: rgba(0,0,0,0.20);
-
-            animation: appear 0.4s ease;
-        }}
-
-
-        .result-title {{
-            color: #cbd5e1;
-
-            font-size: 14px;
-
-            margin-bottom: 8px;
-        }}
-
-
-        .number {{
-            font-size: 70px;
-
-            font-weight: bold;
-
-            background: linear-gradient(
-                135deg,
-                #a5b4fc,
-                #e9d5ff
-            );
-
-            -webkit-background-clip: text;
-
-            -webkit-text-fill-color: transparent;
-        }}
-
-
-        .message {{
-            margin-top: 25px;
-
-            padding: 14px;
-
-            border-radius: 12px;
-
-            background: rgba(255,255,255,0.08);
-
-            color: #e2e8f0;
-
-            font-size: 15px;
-        }}
-
-
-        .footer {{
-            margin-top: 25px;
-
-            color: #94a3b8;
-
-            font-size: 12px;
-        }}
-
-
-        @keyframes appear {{
-            from {{
-                opacity: 0;
-
-                transform: scale(0.85);
-            }}
-
-            to {{
-                opacity: 1;
-
-                transform: scale(1);
-            }}
-        }}
-
-
-        @media (max-width: 480px) {{
-
-            .container {{
-                padding: 25px 20px;
-
-                border-radius: 22px;
-            }}
-
-            h1 {{
-                font-size: 27px;
-            }}
-
-            .inputs {{
-                flex-direction: column;
-            }}
-
-            input {{
-                width: 100%;
-            }}
-
-            .number {{
-                font-size: 60px;
-            }}
-        }}
-
-    </style>
-
-</head>
-
-
-<body>
-
-    <div class="container">
-
-        <div class="icon">🎲</div>
-
-        <h1>Random Number</h1>
-
-        <div class="subtitle">
-            Generate a random number from your range
-        </div>
-
-
-        <form method="POST">
-
-            <div class="inputs">
-
-                <input
-                    type="number"
-                    name="min_number"
-                    placeholder="Minimum"
-                    value="{min_number}"
-                    required
-                >
-
-                <input
-                    type="number"
-                    name="max_number"
-                    placeholder="Maximum"
-                    value="{max_number}"
-                    required
-                >
-
-            </div>
-
-
-            <button
-                type="submit"
-                name="action"
-                value="generate"
-                class="generate"
-            >
-                🎲 GENERATE NUMBER
-            </button>
-
-
-            <button
-                type="submit"
-                name="action"
-                value="reset"
-                class="reset"
-            >
-                🔄 RESET
-            </button>
-
-        </form>
-
-
-        {
-            f'''
-            <div class="result">
-
-                <div class="result-title">
-                    YOUR RANDOM NUMBER
-                </div>
-
-                <div class="number">
-                    {number}
-                </div>
-
-            </div>
-            '''
-            if number is not None else ""
-        }
-
-
-        {
-            f'''
-            <div class="message">
-                {message}
-            </div>
-            '''
-            if message else ""
-        }
-
-
-        <div class="footer">
-            Random Number Generator • Flask
-        </div>
-
-    </div>
-
-</body>
-
-</html>
-"""
+        try:
+            min_number = int(request.form["min_number"])
+            max_number = int(request.form["max_number"])
+
+            if min_number > max_number:
+                error = "Minimum son Maximum sondan katta bo'lishi mumkin emas!"
+            else:
+                number = random.randint(min_number, max_number)
+
+        except ValueError:
+            error = "Iltimos, faqat son kiriting!"
+
+    return render_template_string(
+        HTML,
+        number=number,
+        error=error,
+        min_number=min_number,
+        max_number=max_number
+    )
 
 
 if __name__ == "__main__":
